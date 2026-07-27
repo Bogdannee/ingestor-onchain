@@ -13,33 +13,47 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        // TODO(T11): вместо реальной подписки logsSubscribe — мок-источник
-        // новых mint'ов (файл/захардкоженный список для локального прогона).
+        // TODO: подписаться на coin.mention (Redis Stream) вместо мок-списка.
+        // Каждое новое упоминание -> добавить mint в множество отслеживаемых.
+        var watchedMints = LoadMockWatchedMints();
 
-        foreach (var mint in LoadMockMints())
+        foreach (var mint in watchedMints)
         {
-            var snapshot = await FetchOnchainSnapshotAsync(mint);
-            await PublishMintNewAsync(mint);
-            await PublishOnchainSnapshotAsync(mint, snapshot);
+            // TODO: getParsedAccountInfo(mint) через выбранный RPC-провайдер (Helius Free).
+            var (mintAuthority, freezeAuthority) = await FetchMintAuthoritiesAsync(mint);
+
+            // TODO: эти три поля — из отдельного вендора (RugCheck/Solana Tracker),
+            // не из RPC. Провайдер не выбран, пока заглушка.
+            var (lpLocked, bundledPct, sniperPct) = await FetchRiskMetricsAsync(mint);
+
+            await PublishOnchainSnapshotAsync(mint, mintAuthority, freezeAuthority,
+                lpLocked, bundledPct, sniperPct);
         }
 
         Console.WriteLine("ingestor-onchain: готово (мок-прогон).");
     }
 
-    private static IEnumerable<string> LoadMockMints()
+    private static IEnumerable<string> LoadMockWatchedMints()
     {
-        yield break; // заглушка
+        yield break; // заглушка — заменить чтением из coin.mention
     }
 
-    private static Task<object> FetchOnchainSnapshotAsync(string mint)
+    private static Task<(string? mintAuthority, string? freezeAuthority)> FetchMintAuthoritiesAsync(string mint)
     {
-        // TODO: mint/freeze authority, lp_locked, bundled_pct, sniper_pct
-        throw new NotImplementedException("T11: провайдер ещё не подключён");
+        // TODO: getParsedAccountInfo(mint, {encoding: "jsonParsed"}) через RPC-провайдера.
+        // SPL Token Mint layout содержит mintAuthority/freezeAuthority напрямую —
+        // не нужно вручную парсить бинарные данные.
+        throw new NotImplementedException("RPC-клиент ещё не подключён");
     }
 
-    private static Task PublishMintNewAsync(string mint)
-        => throw new NotImplementedException("T11: публикация mint.new");
+    private static Task<(bool? lpLocked, float? bundledPct, float? sniperPct)> FetchRiskMetricsAsync(string mint)
+    {
+        // TODO: провайдер риск-метрик не выбран (см. providers.md).
+        throw new NotImplementedException("вендор риск-метрик ещё не выбран");
+    }
 
-    private static Task PublishOnchainSnapshotAsync(string mint, object snapshot)
-        => throw new NotImplementedException("T11: публикация onchain.snapshot");
+    private static Task PublishOnchainSnapshotAsync(
+        string mint, string? mintAuthority, string? freezeAuthority,
+        bool? lpLocked, float? bundledPct, float? sniperPct)
+        => throw new NotImplementedException("публикация onchain.snapshot");
 }
